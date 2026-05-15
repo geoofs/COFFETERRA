@@ -1566,10 +1566,17 @@ if(document.readyState === 'loading'){
     border-radius:20px 20px 0 0;
   }
 
-  .contact-main{flex-direction:column}
-  .contact-form{width:100%}
-}
-  .contact-cards{flex-direction:column}
+  .contact-main{
+    flex-direction:column;
+  }
+
+  .contact-form{
+    width:100%;
+  }
+
+  .contact-cards{
+    flex-direction:column;
+  }
 }
 
 
@@ -2385,9 +2392,27 @@ window.startRoute = function(name){
         }).addTo(routingMap).bindPopup('Your Location');
       }
 
-      const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${userLng},${userLat};${selected.lng},${selected.lat}?overview=full&geometries=geojson`;
+      // ===== IMPROVED NETWORK ANALYST =====
+      // snapping ke jaringan jalan terdekat agar rute lebih realistis
+      const nearestUserUrl = `https://router.project-osrm.org/nearest/v1/driving/${userLng},${userLat}?number=1`;
+      const nearestCoffeeUrl = `https://router.project-osrm.org/nearest/v1/driving/${selected.lng},${selected.lat}?number=1`;
 
-      fetch(osrmUrl)
+      Promise.all([
+        fetch(nearestUserUrl).then(r=>r.json()),
+        fetch(nearestCoffeeUrl).then(r=>r.json())
+      ])
+      .then(([userSnap, coffeeSnap])=>{
+
+        const snappedUser = userSnap.waypoints[0].location;
+        const snappedCoffee = coffeeSnap.waypoints[0].location;
+
+        // shortest + fastest road network route
+        const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${snappedUser[0]},${snappedUser[1]};${snappedCoffee[0]},${snappedCoffee[1]}?overview=full&geometries=geojson&steps=true&annotations=distance,duration`;
+
+        return fetch(osrmUrl);
+      })
+
+      .then(res => res.json())
         .then(res => res.json())
         .then(data => {
 
